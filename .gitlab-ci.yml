@@ -1,0 +1,65 @@
+workflow:
+  rules:
+    - changes:
+        - api/**/*
+      variables:
+        APP: api
+    - changes:
+        - web/**/*
+      variables:
+        APP: web
+
+variables:
+  AWS_DEFAULT_REGION: ap-southeast-1
+  EKS_CLUSTER: empty
+  ECR_REGISTRY: empty
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+
+stages:
+  - test
+  - build
+  # - deploy
+
+test:
+  stage: test
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+  image:
+    name: node:16
+  script:
+    - cd $APP && npm audit
+
+build:
+  stage: build
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  image:
+    name: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache curl jq python3 py3-pip
+    - pip install awscli
+    # - aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REGISTRY
+    - aws --version
+    - docker info
+    - docker --version
+  script:
+    - |
+      cd $APP
+      docker build -t $ECR_REPOSITORY/$APP:$CI_COMMIT_SHORT_SHA .
+      # docker push $ECR_REPOSITORY:$CI_COMMIT_SHORT_SHA
+
+# deploy:
+#   stage: deploy
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == "main"
+#   image:
+#     name: minhnn49/awscli-helm:latest
+#   script:
+#     - |
+#       aws eks update-kubeconfig --name $EKS_CLUSTER
+#       helm upgrade --install myapp deploy/helm/3tier-app2 --set $APP.image.tag=$CI_COMMIT_SHORT_SHA

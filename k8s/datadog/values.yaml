@@ -1,0 +1,35 @@
+
+fullnameOverride: datadog-agent
+datadog:
+  apiKeyExistingSecret: datadog-secret # This is secret name not the actual key
+  site: us5.datadoghq.com
+  logs:
+    enabled: true
+    #containerCollectAll: true
+  apm:
+    socketEnabled: false
+    portEnabled: true
+  processAgent:
+    enabled: false
+  clusterAgent:
+    enabled: false
+  remoteConfiguration:
+    enabled: false
+  env:
+    - name: DD_PROCESS_AGENT_PROCESS_COLLECTION_ENABLED
+      value: "false"
+    - name: DD_PROCESS_AGENT_CONTAINER_COLLECTION_ENABLED
+      value: "false"
+    - name: DD_ENABLE_PAYLOADS_EVENTS
+      value: "false"
+    - name: DD_ENABLE_PAYLOADS_SERIES
+      value: "false"
+    - name: DD_ENABLE_PAYLOADS_SERVICE_CHECKS
+      value: "false"
+    - name: DD_ENABLE_PAYLOADS_SKETCHES
+      value: "false"
+agents:
+  rbac:
+    create: true
+clusterAgent:
+  replicas: 1

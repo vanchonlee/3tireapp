@@ -1,0 +1,48 @@
+version: "3"
+services:
+  web:
+    container_name: web
+    build: ./web
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      API_HOST: "http://api:5000"
+    depends_on:
+      - api
+    networks:
+      - application
+  api:
+    container_name: api
+    build: ./api
+    ports:
+      - "5001:5000"
+    environment:
+      PORT: 5000
+      DB: postgres
+      DBUSER: postgres
+      DBPASS: postgres
+      DBHOST: db
+      DBPORT: 5432
+    depends_on:
+      - db
+    networks:
+      - application
+  db:
+    container_name: db
+    image: docker.io/bitnami/postgresql:16
+    volumes:
+      - postgres_data:/bitnami/postgresql
+    environment:
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=postgres
+      - POSTGRESQL_DATABASE=postgres
+    networks:
+      - application
+
+volumes:
+  postgres_data:
+    driver: local
+networks:
+  application:
+    driver: bridge

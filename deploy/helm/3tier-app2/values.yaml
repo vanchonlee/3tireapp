@@ -1,0 +1,51 @@
+api:
+  replicaCount: 1
+  image:
+    repository: 082168422974.dkr.ecr.ap-southeast-1.amazonaws.com/3tier-api
+    tag: latest
+  containerPort: 5000
+  databaseHost: "tierapp-db.c3o2ua6gypka.ap-southeast-1.rds.amazonaws.com"
+  databasePort: "5432"
+  databaseName: "postgres"
+
+  databaseSecretCred: true
+  databaseSecretName: "tier-api-sercret"
+
+  service:
+    type: ClusterIP
+    port: 5000
+  hpa:
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  ingress:
+    enabled: true
+    annotations:
+      nginx.ingress.kubernetes.io/limit-rps: "5"
+    host: tier-api.dev.easyid.vn
+    path: /
+    tls: false
+    tlsSecret: ""
+
+web:
+  replicaCount: 1
+  image:
+    repository: 082168422974.dkr.ecr.ap-southeast-1.amazonaws.com/3tier-web
+    tag: latest
+  containerPort: 8080
+  apiHost: http://three-tier-app-api.prod.svc.cluster.local:5000
+  service:
+    type: ClusterIP
+    port: 8080
+  hpa:
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+  ingress:
+    enabled: true
+    host: tier-web.dev.easyid.vn
+    path: /
+    annotations:
+      nginx.ingress.kubernetes.io/limit-rps: "5"
+    tls: false
+    tlsSecret: ""

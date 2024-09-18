@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-web
+spec:
+  replicas: {{ .Values.web.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-web
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-web
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/service: web
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        admission.datadoghq.com/js-lib.version: "v3.6.1"
+        ad.datadoghq.com/web.logs: '[{"source":"web","service":"web"}]'
+    spec:
+      serviceAccountName: {{ .Release.Name }}-web
+      containers:
+        - name: web
+          image: {{ .Values.web.image.repository }}:{{ .Values.web.image.tag }}
+          ports:
+            - containerPort: {{ .Values.web.containerPort }}
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            
+            - name: DD_LOGS_INJECTION
+              value: "true"
+            - name: DD_TRACE_SAMPLE_RATE
+              value: "1"
+            - name: PORT
+              value: "{{ .Values.web.containerPort }}"
+            - name: API_HOST
+              value: "http://{{ .Release.Name }}-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.containerPort }}"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: {{ .Values.web.containerPort }}
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 20
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: {{ .Values.web.containerPort }}
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 20

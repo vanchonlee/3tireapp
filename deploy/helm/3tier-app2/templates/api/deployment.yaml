@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-api
+      
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-api
+        tags.datadoghq.com/env: prod
+        tags.datadoghq.com/service: api
+        #admission.datadoghq.com/enabled: "true"
+      annotations:
+        admission.datadoghq.com/js-lib.version: "v3.6.1"
+        ad.datadoghq.com/web.logs: '[{"source":"api","service":"api"}]'
+    spec:
+      serviceAccountName: {{ .Release.Name }}-api
+      containers:
+        - name: api
+          image: {{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}
+          ports:
+            - containerPort: {{ .Values.api.containerPort }}
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            
+            - name: DD_LOGS_INJECTION
+              value: "true"
+            - name: DD_TRACE_SAMPLE_RATE
+              value: "1"
+            - name: DBHOST
+              value: {{ .Values.api.databaseHost }}
+            - name: DBPORT
+              value: "{{ .Values.api.databasePort }}"
+            {{- if .Values.api.databaseSecretCred }}
+            - name: DBUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.databaseSecretName }}
+                  key: username
+            - name: DBPASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.api.databaseSecretName }}
+                  key: password
+            {{- else }}
+            - name: DBUSER
+              value: {{ .Values.api.databaseUser }}
+            - name: DBPASS
+              value: {{ .Values.api.databasePassword }}
+            {{- end }}
+            - name: DB
+              value: {{ .Values.api.databaseName }}
+            - name: PORT
+              value: "{{ .Values.api.containerPort }}"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/status
+              port: {{ .Values.api.containerPort }}
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 20
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /api/status
+              port: {{ .Values.api.containerPort }}
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 20
